@@ -28,38 +28,23 @@ def test_TC_BKG_01_1_book_last_seat(client, make_slot, db):
     assert bookings[0].hn == "0001234"
     db.refresh(slot)
     assert slot.remaining == 0
-    # ยังไม่ตรวจหมายเลขคิว เพราะรอ Q-02; หน้าจออยู่ใน TC-BKG-01-2
+    # ยังไม่ตรวจการแสดงหมายเลขคิวของ TC-BKG-01-1 เพราะรอ Q-02
 
 
-def test_TC_BKG_01_3_full_slot(client, make_slot, db):
+def test_TC_BKG_01_3_not_verified(client, make_slot, db):
     from app.db.models import Booking
-    # Given ยืนยันตัวตนแล้ว ช่วง 09.00 น. เหลือ 0 ที่
-    # วันเดียวกันและวันถัดไปมีช่วงว่างอย่างน้อย 3 ช่วง
-    slot = make_slot(start="09:00", remaining=0)
-    alternatives = [
-        make_slot(start="09:30", remaining=1),
-        make_slot(start="08:00", remaining=1, days_from_today=2),
-        make_slot(start="09:00", remaining=1, days_from_today=2),
-    ]
-    make_slot(start="10:00", remaining=1, days_from_today=2)
-    make_slot(start="09:00", remaining=1, days_from_today=3)
+    # Given ยังไม่ได้ยืนยันตัวตน และช่วง 09.00 น. มีที่นั่งว่าง 1 ที่
+    slot = make_slot(start="09:00", remaining=1)
     # When ยืนยันการจองช่วง 09.00 น.
-    res = client.post("/bookings", json={"slot_id": slot.id}, headers=AUTH)
-    # Then ตอบ 409 และไม่สร้างรายการจอง
-    assert res.status_code == 409
+    res = client.post("/bookings", json={"slot_id": slot.id})
+    # Then (1) ปฏิเสธ ตอบ 401
+    assert res.status_code == 401
+    # Then (2) ไม่มีการจอง
     db.expire_all()
     assert db.query(Booking).count() == 0
-    # Then มี 3 ช่วงว่างใกล้ที่สุดในวันเดียวกันและวันถัดไป
-    # ใช้ slot_id ของข้อมูลช่วงเวลา โดยไม่กำหนดชื่อ envelope เอง
-    def slot_ids(value):
-        if isinstance(value, dict):
-            result = [value["slot_id"]] if "slot_id" in value else []
-            return result + [item for key, child in value.items()
-                             if key != "slot_id" for item in slot_ids(child)]
-        if isinstance(value, list):
-            return [item for child in value for item in slot_ids(child)]
-        return []
-    assert sorted(slot_ids(res.json())) == sorted(s.id for s in alternatives)
+    # Then (3) ที่นั่งว่างยังเป็น 1
+    db.refresh(slot)
+    assert slot.remaining == 1
 
 
 def test_TC_BKG_01_4_unverified_user(client, make_slot):
@@ -73,3 +58,27 @@ def test_TC_BKG_01_4_unverified_user(client, make_slot):
     assert 400 <= res.status_code < 500
     create_booking.assert_not_called()
     # ไม่ assert status ที่แน่นอน ข้อความ และผลต่อข้อมูล/ที่นั่งที่ spec ไม่บอก
+
+
+def test_TC_BKG_01_2_no_seat_left(client, make_slot, db):
+    from app.db.models import Booking
+    # Given ยืนยันตัวตนแล้ว ช่วง 09.00 น. เหลือ 0 ที่ มีคนจองที่สุดท้ายไปแล้ว
+    slot = make_slot(start="09:00", remaining=1)
+    previous = client.post(
+        "/bookings", json={"slot_id": slot.id},
+        headers={"Authorization": "Bearer verified:0005678"},
+    )
+    assert previous.status_code == 201
+    db.refresh(slot)
+    assert slot.remaining == 0
+    original_ids = {booking.id for booking in db.query(Booking).all()}
+    # When ผู้รับบริการยืนยันการจองช่วง 09.00 น.
+    res = client.post("/bookings", json={"slot_id": slot.id}, headers=AUTH)
+    # Then (1) ปฏิเสธ ตอบ 409
+    assert res.status_code == 409
+    # Then (2) ไม่มีการจองใหม่ โดยคงการจองเดิมไว้
+    db.expire_all()
+    assert {booking.id for booking in db.query(Booking).all()} == original_ids
+    # Then (3) ที่นั่งว่างยังเป็น 0 ไม่ติดลบ
+    db.refresh(slot)
+    assert slot.remaining == 0
