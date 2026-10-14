@@ -59,3 +59,30 @@
 - คำตอบของทีม: ยังไม่มีในรอบนี้
 - ผล test: ไม่ได้รัน เพราะโหมดร่างต้องหยุดก่อนเขียนโค้ด test ตาม .claude/commands/testcases.md
 - ไม่แก้โค้ดระบบหรือ test เดิม
+
+---
+
+## 2569-10-14 คำสั่ง: /testcases AC-BKG-01 specs/001-booking/ (ตามภาพ)
+
+- โหมด: เขียน test จาก 4 แถวสถานะใช้ได้ในตารางจริง
+- เพิ่ม test หลังบ้าน TC-BKG-01-1, TC-BKG-01-3, TC-BKG-01-4 ต่อท้าย test เดิม; จำนวน test ใน test_AC_BKG_01.py เพิ่มจาก 1 เป็น 4
+- เพิ่ม test หน้าจอ TC-BKG-01-2 จำนวน 1 ตัว แบบ skipped ไม่มี assert เพราะ Then รอ Q-02 และ T-06 ยังรอคำตอบ
+- ผล pytest -v ทั้งหลังบ้าน: 6 passed, 1 failed (test เดิม 4 ตัวผ่าน)
+- test_TC_BKG_01_1_book_last_seat: PASSED ตรวจรายการจองที่บันทึกและ remaining เป็น 0
+- test_TC_BKG_01_3_full_slot: FAILED: assert 201 == 409
+- test_TC_BKG_01_4_unverified_user: PASSED ตรวจการปฏิเสธก่อนเข้าถึงบริการ โดยไม่กำหนด status ที่แน่นอนหรือผลต่อข้อมูลที่ spec ไม่ได้บอก
+- สาเหตุกรณี 0 ที่: backend/app/booking/service.py บรรทัด 26 ใช้ slot.remaining < 0 จึงยอมให้จองเมื่อเหลือ 0 ที่; ส่วน 3 ช่วงทดแทนยังไม่ถึง assert และเป็นงาน T-05 ที่ยังไม่ทำ
+- ผลตรงภาพในพฤติกรรมทั้ง 3 กรณีและข้อความ assert 201 == 409 แต่ชื่อและ ID ใช้ตามตารางจริงที่มีแถวหน้าจอเพิ่ม
+- ผล npm test: 1 passed, 1 skipped และ 1 failed suite จาก frontend/tests/researchFilter.test.mjs ที่ใช้ node:test และ Vitest รายงาน No test suite found
+- ติดตั้ง dependencies หน้าจอตาม package.json โดยไม่สร้าง lockfile; ไม่แก้โค้ดระบบหรือ test เดิม ไม่ commit/push
+
+---
+
+## 2569-10-14 คำสั่ง: แก้เฉพาะ service.py ให้ปฏิเสธการจองเมื่อไม่มีที่นั่ง ตามภาพ แล้วรัน pytest -v ห้ามแก้ test
+
+- แก้ backend/app/booking/service.py บรรทัด 26 จาก slot.remaining < 0 เป็น slot.remaining <= 0 เท่านั้น
+- ไม่แก้ test ใดในรอบนี้; TC กรณีไม่มีที่นั่งในตารางจริงคือ TC-BKG-01-3 (ภาพเรียก TC-BKG-01-2)
+- ผล pytest -v: 6 passed, 1 failed
+- test_TC_BKG_01_3_full_slot ผ่านการตรวจ HTTP 409 และไม่มีรายการจองแล้ว จึงยืนยันว่าปฏิเสธการจองเมื่อ remaining เป็น 0
+- ยังไม่ผ่านการตรวจ 3 ช่วงทดแทน: assert [] == [2, 3, 4] เพราะ router ยังไม่ส่งช่วงทดแทนตาม FR-BKG-03 (T-05 ยังไม่ทำ)
+- หยุดตามขอบเขตที่ให้แก้การปฏิเสธเมื่อไม่มีที่นั่ง; ไม่เพิ่มช่วงทดแทน ไม่แก้ router ไม่แก้ test ไม่ commit/push
