@@ -139,3 +139,13 @@
 - ผล pytest -v หลังเพิ่มกรณีที่ขาด: 8 passed, 1 warning ใน 0.95 วินาที
 - ปรับเฉพาะคอมเมนต์และชื่อกรณีหน้าจอที่ข้ามให้ระบุ TC-BKG-01-1 ตามตารางล่าสุด; การแสดงเลขคิวยังรอ Q-02
 - ไม่แก้โค้ดระบบ ไม่แก้ suite researchFilter ไม่ commit/push
+
+---
+
+## 2569-10-14 คำสั่ง: /verify specs/001-booking/
+
+- อ่าน spec/plan/tasks/test-cases/AGENTS และโค้ด source/test ทั้งหมดใน backend/app, backend/tests, frontend/src; ยังไม่มี rtm.md เดิม
+- ผล pytest -v: 8 passed, 1 warning; npm test: 1 passed, 1 skipped และ 1 failed suite (researchFilter.test.mjs: No test suite found)
+- สร้าง specs/001-booking/rtm.md: forward trace 15 แถว ครบ 0 ยังไม่ถึง 8 รอ 0 ช่องโหว่ 7; FR-BKG-04 มีส่วนรอ Q-02 แต่สถานะรวมเป็นช่องโหว่เพราะเดาคำตอบในโค้ด
+- ข้อค้นพบใหม่ F-01 ถึง F-11: national_id ใน log, mock IdP, เดา Q-02, ยกเลิกนอกขอบเขต, อ้าง FR ผิด, 14/30 วัน, FR-BKG-01/06 ขาด AC ที่ตรงพฤติกรรม, test โหลดไม่พร้อมกัน, โค้ดงานวิจัยไม่มี FR, test PostgreSQL ไม่ครบ
+- ทีมตัดสินทุกข้อเว้นว่าง ไม่แก้โค้ด test spec plan หรือ tasks และไม่ commit/push
